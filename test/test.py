@@ -139,8 +139,8 @@ async def test_securekey(dut):
     last_audio = (int(dut.uio_out.value) >> 5) & 1
     toggles = 0
     # The gate netlist has the production 10 MHz divider constants folded in.
-    # Two A4 half-periods require about 22,726 clock cycles.
-    timeout = 30_000 if os.getenv("GATES") == "yes" else 400
+    # Two E4 half-periods require about 30,302 clock cycles.
+    timeout = 35_000 if os.getenv("GATES") == "yes" else 400
     for _ in range(timeout):
         await RisingEdge(dut.clk)
         await settle()

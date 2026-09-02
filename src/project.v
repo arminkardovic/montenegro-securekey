@@ -188,97 +188,89 @@ module tt_um_arminkardovic_montenegro_securekey #(
     // cycle square wave intended for an external piezo driver.
     // ---------------------------------------------------------------------
     localparam [3:0] NOTE_REST = 4'd0;
-    localparam [3:0] NOTE_D4   = 4'd1;
-    localparam [3:0] NOTE_E4   = 4'd2;
-    localparam [3:0] NOTE_F4   = 4'd3;
-    localparam [3:0] NOTE_G4   = 4'd4;
-    localparam [3:0] NOTE_A4   = 4'd5;
-    localparam [3:0] NOTE_BB4  = 4'd6;
-    localparam [3:0] NOTE_C5   = 4'd7;
-    localparam [3:0] NOTE_D5   = 4'd8;
-    localparam [3:0] NOTE_E5   = 4'd9;
-    localparam [3:0] NOTE_F5   = 4'd10;
-    localparam [3:0] NOTE_G5   = 4'd11;
-    localparam [3:0] NOTE_A5   = 4'd12;
-    localparam [5:0] MELODY_LAST_INDEX = 6'd47;
+    localparam [3:0] NOTE_E4   = 4'd1;
+    localparam [3:0] NOTE_F4   = 4'd2;
+    localparam [3:0] NOTE_G4   = 4'd3;
+    localparam [3:0] NOTE_A4   = 4'd4;
+    localparam [5:0] MELODY_LAST_INDEX = 6'd48;
 
     function [7:0] melody_word;
         input [5:0] address;
         begin
             // Upper nibble: note code. Lower nibble: 125 ms units.
+            // Transcribed from the F-major, 2/4 score at quarter note = 80.
+            // Three units are an eighth note; six units are a quarter note.
             case (address)
-                6'd0:  melody_word = {NOTE_A4,  4'd2};
-                6'd1:  melody_word = {NOTE_A4,  4'd2};
-                6'd2:  melody_word = {NOTE_BB4, 4'd2};
-                6'd3:  melody_word = {NOTE_C5,  4'd2};
-                6'd4:  melody_word = {NOTE_D5,  4'd4};
-                6'd5:  melody_word = {NOTE_C5,  4'd2};
-                6'd6:  melody_word = {NOTE_BB4, 4'd2};
-                6'd7:  melody_word = {NOTE_A4,  4'd4};
-                6'd8:  melody_word = {NOTE_G4,  4'd2};
-                6'd9:  melody_word = {NOTE_A4,  4'd2};
-                6'd10: melody_word = {NOTE_BB4, 4'd2};
-                6'd11: melody_word = {NOTE_A4,  4'd4};
-                6'd12: melody_word = {NOTE_G4,  4'd2};
-                6'd13: melody_word = {NOTE_F4,  4'd4};
-                6'd14: melody_word = {NOTE_REST, 4'd1};
-                6'd15: melody_word = {NOTE_A4,  4'd2};
-                6'd16: melody_word = {NOTE_A4,  4'd2};
-                6'd17: melody_word = {NOTE_BB4, 4'd2};
-                6'd18: melody_word = {NOTE_C5,  4'd2};
-                6'd19: melody_word = {NOTE_D5,  4'd4};
-                6'd20: melody_word = {NOTE_E5,  4'd2};
-                6'd21: melody_word = {NOTE_F5,  4'd2};
-                6'd22: melody_word = {NOTE_E5,  4'd4};
-                6'd23: melody_word = {NOTE_D5,  4'd2};
-                6'd24: melody_word = {NOTE_C5,  4'd2};
-                6'd25: melody_word = {NOTE_BB4, 4'd2};
-                6'd26: melody_word = {NOTE_A4,  4'd4};
-                6'd27: melody_word = {NOTE_G4,  4'd2};
-                6'd28: melody_word = {NOTE_A4,  4'd2};
-                6'd29: melody_word = {NOTE_BB4, 4'd2};
-                6'd30: melody_word = {NOTE_A4,  4'd4};
-                6'd31: melody_word = {NOTE_D4,  4'd4};
-                6'd32: melody_word = {NOTE_F4,  4'd2};
-                6'd33: melody_word = {NOTE_G4,  4'd2};
-                6'd34: melody_word = {NOTE_A4,  4'd4};
-                6'd35: melody_word = {NOTE_BB4, 4'd2};
-                6'd36: melody_word = {NOTE_A4,  4'd2};
-                6'd37: melody_word = {NOTE_G4,  4'd4};
-                6'd38: melody_word = {NOTE_F4,  4'd2};
-                6'd39: melody_word = {NOTE_E4,  4'd2};
-                6'd40: melody_word = {NOTE_D4,  4'd4};
-                6'd41: melody_word = {NOTE_A4,  4'd2};
-                6'd42: melody_word = {NOTE_D5,  4'd2};
-                6'd43: melody_word = {NOTE_C5,  4'd2};
-                6'd44: melody_word = {NOTE_BB4, 4'd2};
-                6'd45: melody_word = {NOTE_A4,  4'd2};
-                6'd46: melody_word = {NOTE_G4,  4'd2};
-                6'd47: melody_word = {NOTE_D4,  4'd8};
+                // Score measures 1-7: opening refrain
+                6'd0:  melody_word = {NOTE_E4, 4'd3};
+                6'd1:  melody_word = {NOTE_E4, 4'd3};
+                6'd2:  melody_word = {NOTE_E4, 4'd3};
+                6'd3:  melody_word = {NOTE_F4, 4'd3};
+                6'd4:  melody_word = {NOTE_E4, 4'd6};
+                6'd5:  melody_word = {NOTE_E4, 4'd3};
+                6'd6:  melody_word = {NOTE_F4, 4'd3};
+                6'd7:  melody_word = {NOTE_G4, 4'd6};
+                6'd8:  melody_word = {NOTE_G4, 4'd3};
+                6'd9:  melody_word = {NOTE_E4, 4'd3};
+                6'd10: melody_word = {NOTE_E4, 4'd6};
+                6'd11: melody_word = {NOTE_E4, 4'd3};
+                6'd12: melody_word = {NOTE_F4, 4'd3};
+                6'd13: melody_word = {NOTE_G4, 4'd6};
+                6'd14: melody_word = {NOTE_G4, 4'd3};
+                6'd15: melody_word = {NOTE_E4, 4'd3};
+                6'd16: melody_word = {NOTE_F4, 4'd6};
+                6'd17: melody_word = {NOTE_F4, 4'd6};
+                6'd18: melody_word = {NOTE_F4, 4'd6};
+                6'd19: melody_word = {NOTE_F4, 4'd6};
+
+                // Score measures 8-14: continuation of the refrain
+                6'd20: melody_word = {NOTE_E4, 4'd3};
+                6'd21: melody_word = {NOTE_E4, 4'd3};
+                6'd22: melody_word = {NOTE_E4, 4'd3};
+                6'd23: melody_word = {NOTE_F4, 4'd3};
+                6'd24: melody_word = {NOTE_E4, 4'd6};
+                6'd25: melody_word = {NOTE_E4, 4'd3};
+                6'd26: melody_word = {NOTE_F4, 4'd3};
+                6'd27: melody_word = {NOTE_G4, 4'd6};
+                6'd28: melody_word = {NOTE_G4, 4'd3};
+                6'd29: melody_word = {NOTE_F4, 4'd3};
+                6'd30: melody_word = {NOTE_E4, 4'd6};
+                6'd31: melody_word = {NOTE_E4, 4'd3};
+                6'd32: melody_word = {NOTE_F4, 4'd3};
+                6'd33: melody_word = {NOTE_G4, 4'd6};
+                6'd34: melody_word = {NOTE_G4, 4'd3};
+                6'd35: melody_word = {NOTE_E4, 4'd3};
+                6'd36: melody_word = {NOTE_F4, 4'd6};
+                6'd37: melody_word = {NOTE_F4, 4'd6};
+                6'd38: melody_word = {NOTE_F4, 4'd6};
+                6'd39: melody_word = {NOTE_F4, 4'd6};
+
+                // Score measures 15-17: "Sinovi smo tvog stijenja"
+                6'd40: melody_word = {NOTE_G4, 4'd3};
+                6'd41: melody_word = {NOTE_G4, 4'd3};
+                6'd42: melody_word = {NOTE_G4, 4'd3};
+                6'd43: melody_word = {NOTE_F4, 4'd3};
+                6'd44: melody_word = {NOTE_A4, 4'd6};
+                6'd45: melody_word = {NOTE_G4, 4'd3};
+                6'd46: melody_word = {NOTE_F4, 4'd3};
+                6'd47: melody_word = {NOTE_F4, 4'd6};
+                6'd48: melody_word = {NOTE_E4, 4'd6};
                 default: melody_word = {NOTE_REST, 4'd1};
             endcase
         end
     endfunction
 
-    // At the nominal 10 MHz clock the lowest note needs 17,006 cycles, so
+    // At the nominal 10 MHz clock the lowest note needs 15,151 cycles, so
     // 15 bits are sufficient. NOTE_UNIT_CYCLES is 1,250,000 (21 bits).
     /* verilator lint_off WIDTHTRUNC */
     function [14:0] half_period_for_note;
         input [3:0] note_code;
         begin
             case (note_code)
-                NOTE_D4:  half_period_for_note = CLOCK_HZ / (2 * 294);
                 NOTE_E4:  half_period_for_note = CLOCK_HZ / (2 * 330);
                 NOTE_F4:  half_period_for_note = CLOCK_HZ / (2 * 349);
                 NOTE_G4:  half_period_for_note = CLOCK_HZ / (2 * 392);
                 NOTE_A4:  half_period_for_note = CLOCK_HZ / (2 * 440);
-                NOTE_BB4: half_period_for_note = CLOCK_HZ / (2 * 466);
-                NOTE_C5:  half_period_for_note = CLOCK_HZ / (2 * 523);
-                NOTE_D5:  half_period_for_note = CLOCK_HZ / (2 * 587);
-                NOTE_E5:  half_period_for_note = CLOCK_HZ / (2 * 659);
-                NOTE_F5:  half_period_for_note = CLOCK_HZ / (2 * 698);
-                NOTE_G5:  half_period_for_note = CLOCK_HZ / (2 * 784);
-                NOTE_A5:  half_period_for_note = CLOCK_HZ / (2 * 880);
                 default:  half_period_for_note = 15'd0;
             endcase
         end
@@ -296,6 +288,13 @@ module tt_um_arminkardovic_montenegro_securekey #(
     wire [3:0]  current_note = current_melody_word[7:4];
     wire [3:0]  current_duration_units = current_melody_word[3:0];
     wire [14:0] current_half_period = half_period_for_note(current_note);
+    wire        final_note_unit =
+                    note_units_elapsed + 1'b1 >= current_duration_units;
+    /* verilator lint_off WIDTHEXPAND */
+    wire        articulation_gap = final_note_unit &&
+                    note_unit_counter >=
+                    NOTE_UNIT_CYCLES - (NOTE_UNIT_CYCLES / 4);
+    /* verilator lint_on WIDTHEXPAND */
 
     always @(posedge clk) begin
         if (!rst_n) begin
@@ -320,7 +319,8 @@ module tt_um_arminkardovic_montenegro_securekey #(
             music_playing      <= 1'b1;
             audio_out          <= 1'b0;
         end else if (music_playing) begin
-            if (current_note == NOTE_REST || current_half_period == 15'd0) begin
+            if (current_note == NOTE_REST || current_half_period == 15'd0 ||
+                articulation_gap) begin
                 tone_counter <= 15'd0;
                 audio_out    <= 1'b0;
             end else if (tone_counter >= current_half_period - 1'b1) begin

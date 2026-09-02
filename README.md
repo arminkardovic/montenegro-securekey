@@ -8,7 +8,7 @@ Montenegro SecureKey is a Tiny Tapeout educational ASIC that combines two
 independent functions:
 
 1. a byte-serial, 64-bit challenge/response hardware-licensing demonstration;
-2. a 48-note monophonic approximation of the opening part of Montenegro's
+2. a 49-note monophonic buzzer arrangement of the opening part of Montenegro's
    national anthem, *Oj, svijetla majska zoro*.
 
 The project is implemented directly in synthesizable Verilog. It uses a 10 MHz
@@ -28,7 +28,7 @@ DATA[7:0] ---------->|  8-byte challenge register   |
 DATA_LOAD ---------->|  32-round XTEA demo engine   |----> RESPONSE[7:0]
 AUTH_START ----------|  fixed key + fixed device ID |----> VALID/OK/BUSY
                     |                                |
-MUSIC_START -------->|  48-entry melody ROM         |
+MUSIC_START -------->|  49-entry melody ROM         |
 MUSIC_STOP --------->|  note timer + tone divider   |----> AUDIO_OUT
                     +--------------------------------+
 ```
@@ -107,9 +107,13 @@ calculate additional expected responses.
 ## Melody demo
 
 Pulse `MUSIC_START` on `uio[3]` to restart the melody from note zero. Pulse
-`MUSIC_STOP` on `uio[4]` to stop immediately and force `AUDIO_OUT` low. At the
-nominal 10 MHz clock, each duration unit is 125 ms and the tone table spans D4
-through A5. Changing the clock changes both pitch and tempo proportionally.
+`MUSIC_STOP` on `uio[4]` to stop immediately and force `AUDIO_OUT` low. The ROM
+contains the soprano line through *Sinovi smo tvog stijenja*, transcribed in
+F major and 2/4 at 80 BPM from the published
+[score](https://nationalanthems.info/me.htm). At the nominal 10 MHz clock, each
+duration unit is 125 ms, the tone table spans E4 through A4, and playback lasts
+about 25.5 seconds. A short articulation gap separates repeated notes. Changing
+the clock changes both pitch and tempo proportionally.
 
 `AUDIO_OUT` is a digital logic signal. Do not connect a low-impedance speaker
 or a large piezo load directly to a Tiny Tapeout pin. Use a suitable

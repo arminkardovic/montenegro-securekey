@@ -13,11 +13,12 @@ constant in the public RTL. `uio[7]` is high during calculation. When finished,
 edges on `uio[0]` advance through the remaining seven response bytes; one final
 edge acknowledges byte 7 and clears `uio[2]`.
 
-The melody engine contains a 48-entry note/duration ROM approximating the
-opening section of *Oj, svijetla majska zoro*. A programmable divider converts
-the nominal 10 MHz clock into musical square waves on `uio[5]`. `uio[3]`
-starts or restarts playback and `uio[4]` stops and mutes it. Authentication and
-music can run concurrently.
+The melody engine contains a 49-entry note/duration ROM with the soprano line
+from the opening of *Oj, svijetla majska zoro* through *Sinovi smo tvog
+stijenja*. It follows the published F-major, 2/4 score at 80 BPM. A programmable
+divider converts the nominal 10 MHz clock into articulated musical square waves
+on `uio[5]`. `uio[3]` starts or restarts playback and `uio[4]` stops and mutes
+it. Authentication and music can run concurrently.
 
 This is an educational proof of concept. The public key and device ID are not
 secrets or unique per die, and `AUTH_OK` only reports that a complete local
