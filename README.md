@@ -1,6 +1,6 @@
-[![GDS](https://github.com/arminkardovic/tt-21-mux-with/actions/workflows/gds.yaml/badge.svg)](https://github.com/arminkardovic/tt-21-mux-with/actions/workflows/gds.yaml)
-[![Docs](https://github.com/arminkardovic/tt-21-mux-with/actions/workflows/docs.yaml/badge.svg)](https://github.com/arminkardovic/tt-21-mux-with/actions/workflows/docs.yaml)
-[![Tests](https://github.com/arminkardovic/tt-21-mux-with/actions/workflows/test.yaml/badge.svg)](https://github.com/arminkardovic/tt-21-mux-with/actions/workflows/test.yaml)
+[![GDS](https://github.com/arminkardovic/montenegro-securekey/actions/workflows/gds.yaml/badge.svg)](https://github.com/arminkardovic/montenegro-securekey/actions/workflows/gds.yaml)
+[![Docs](https://github.com/arminkardovic/montenegro-securekey/actions/workflows/docs.yaml/badge.svg)](https://github.com/arminkardovic/montenegro-securekey/actions/workflows/docs.yaml)
+[![Tests](https://github.com/arminkardovic/montenegro-securekey/actions/workflows/test.yaml/badge.svg)](https://github.com/arminkardovic/montenegro-securekey/actions/workflows/test.yaml)
 
 # Montenegro SecureKey
 
