@@ -1,0 +1,8 @@
+read_verilog -sv src/project.v
+hierarchy -check -top tt_um_arminkardovic_montenegro_securekey
+proc
+opt
+check
+synth -top tt_um_arminkardovic_montenegro_securekey
+check
+stat
