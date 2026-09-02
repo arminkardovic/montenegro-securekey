@@ -1,0 +1,45 @@
+[*]
+[*] GTKWave Analyzer save file for Montenegro SecureKey
+[*]
+[timestart] 0
+[size] 1376 700
+[pos] -1 -1
+[treeopen] tb.
+[treeopen] tb.user_project.
+[sst_width] 320
+[signals_width] 260
+[sst_expanded] 1
+@28
+tb.ena
+tb.clk
+tb.rst_n
+@200
+-Inputs
+@22
+tb.ui_in[7:0]
+tb.uio_in[7:0]
+@200
+-Outputs
+@22
+tb.uo_out[7:0]
+tb.uio_out[7:0]
+tb.uio_oe[7:0]
+@200
+-Authentication internals
+@22
+tb.user_project.challenge_byte_count[3:0]
+tb.user_project.xtea_round[5:0]
+tb.user_project.response_byte_index[2:0]
+@28
+tb.user_project.auth_busy
+tb.user_project.auth_ok
+tb.user_project.response_valid
+@200
+-Melody internals
+@22
+tb.user_project.melody_index[5:0]
+@28
+tb.user_project.music_playing
+tb.user_project.audio_out
+[pattern_trace] 1
+[pattern_trace] 0
