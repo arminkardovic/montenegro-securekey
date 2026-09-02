@@ -8,14 +8,14 @@ Montenegro SecureKey is a Tiny Tapeout educational ASIC that combines two
 independent functions:
 
 1. a byte-serial, 64-bit challenge/response hardware-licensing demonstration;
-2. a 49-note monophonic buzzer arrangement of the opening part of Montenegro's
+2. a 40-note monophonic buzzer arrangement of the opening part of Montenegro's
    national anthem, *Oj, svijetla majska zoro*.
 
 The project is implemented directly in synthesizable Verilog. It uses a 10 MHz
-clock and is configured for a `1x2` Tiny Tapeout tile.
+clock and is configured for a `1x1` Tiny Tapeout tile.
 
 > **Security warning:** this is an open-source proof of concept, not a secure
-> element. The fixed XTEA key and fixed device ID are visible in the RTL and
+> element. The fixed mixer key and fixed device ID are visible in the RTL and
 > are identical in every manufactured copy. Do not use this implementation to
 > protect a real commercial product.
 
@@ -25,16 +25,16 @@ clock and is configured for a `1x2` Tiny Tapeout tile.
                             Montenegro SecureKey
                     +--------------------------------+
 DATA[7:0] ---------->|  8-byte challenge register   |
-DATA_LOAD ---------->|  32-round XTEA demo engine   |----> RESPONSE[7:0]
+DATA_LOAD ---------->|  compact keyed mixer         |----> RESPONSE[7:0]
 AUTH_START ----------|  fixed key + fixed device ID |----> VALID/OK/BUSY
                     |                                |
-MUSIC_START -------->|  49-entry melody ROM         |
+MUSIC_START -------->|  40-entry melody ROM         |
 MUSIC_STOP --------->|  note timer + tone divider   |----> AUDIO_OUT
                     +--------------------------------+
 ```
 
 The authentication and melody state machines can run at the same time. The
-authentication engine takes exactly 64 calculation clocks after a valid start.
+authentication engine takes exactly 128 calculation clocks after a valid start.
 The music engine stores note numbers and durations, not sampled audio.
 
 ## Pinout
@@ -83,22 +83,24 @@ response. It does **not** mean that a host has verified the response.
 
 ### Demonstration transform
 
-The 64-bit challenge is whitened with `DEVICE_ID`, encrypted with 32 rounds of
-XTEA using the fixed 128-bit demo key, then whitened again:
-
-The compact engine evaluates one XTEA half-round per clock, so a response is
-ready after 64 processing clocks (about 6.4 microseconds at 10 MHz).
+The 64-bit challenge passes through 128 cycles of a keyed nonlinear feedback
+mixer. Each cycle shifts the state by one bit and feeds back linear taps,
+nonlinear tap products, the round counter, and one bit derived from the fixed
+key and device ID. A response is ready after 128 processing clocks (about 12.8
+microseconds at 10 MHz). This custom mixer is only a deterministic educational
+demonstration and must not be treated as a reviewed cryptographic primitive.
 
 ```text
 DEVICE_ID = 0x45490001
-DEMO_KEY  = 0xA91B82C771EF12346D6F6E74656E6567
+DEMO_KEY  = 0xA91B82C771EF1234
 ```
 
 Known-answer vector:
 
 | Challenge | Response |
 | --- | --- |
-| `2791A218447310CB` | `9CDECC9AB218FD6A` |
+| `2791A218447310CB` | `9E169266A982792B` |
+| `0000000000000000` | `1A114BAD46E0AEE1` |
 
 The dependency-free host model in
 [`examples/securekey_reference.py`](examples/securekey_reference.py) can
@@ -108,11 +110,11 @@ calculate additional expected responses.
 
 Pulse `MUSIC_START` on `uio[3]` to restart the melody from note zero. Pulse
 `MUSIC_STOP` on `uio[4]` to stop immediately and force `AUDIO_OUT` low. The ROM
-contains the soprano line through *Sinovi smo tvog stijenja*, transcribed in
-F major and 2/4 at 80 BPM from the published
+contains two opening refrain phrases, transcribed in F major and 2/4 at 80 BPM
+from the published
 [score](https://nationalanthems.info/me.htm). At the nominal 10 MHz clock, each
-duration unit is 125 ms, the tone table spans E4 through A4, and playback lasts
-about 25.5 seconds. A short articulation gap separates repeated notes. Changing
+duration unit is 125 ms, the tone table spans E4 through G4, and playback lasts
+about 21 seconds. A short articulation gap separates repeated notes. Changing
 the clock changes both pitch and tempo proportionally.
 
 `AUDIO_OUT` is a digital logic signal. Do not connect a low-impedance speaker
@@ -152,8 +154,8 @@ the generated layout/timing reports must be reviewed.
 - The demo key is committed to a public repository and can be extracted from
   RTL, netlist, or layout.
 - `DEVICE_ID` is a build-time constant, so it is not unique per physical die.
-- XTEA is used here for compact educational logic and has not been selected or
-  reviewed for this product's security requirements.
+- The custom nonlinear feedback mixer is an area-saving demonstration, not a
+  standardized or independently reviewed cryptographic primitive.
 - There is no OTP/eFuse/PUF storage, tamper resistance, side-channel
   protection, monotonic counter, or on-chip replay database.
 - Replay resistance depends on the host generating unpredictable, non-reused

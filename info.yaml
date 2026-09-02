@@ -7,8 +7,8 @@ project:
   language: "Verilog"
   clock_hz: 10000000
 
-  # The iterative XTEA datapath and melody/tone engine are budgeted for 1x2.
-  tiles: "1x2"
+  # Compact keyed mixer and shortened melody/tone engine fit one tile.
+  tiles: "1x1"
 
   top_module: "tt_um_arminkardovic_montenegro_securekey"
   source_files:

@@ -30,10 +30,10 @@ module tt_um_arminkardovic_montenegro_securekey #(
     // Public demonstration identity and key.
     // A production device needs a non-public, per-device provisioned key.
     // ---------------------------------------------------------------------
-    localparam [31:0]  DEVICE_ID = 32'h4549_0001; // "EI" + device 0001
-    localparam [127:0] DEMO_KEY  = 128'hA91B82C771EF12346D6F6E74656E6567;
-    localparam [31:0]  XTEA_DELTA = 32'h9E37_79B9;
+    localparam [31:0] DEVICE_ID = 32'h4549_0001; // "EI" + device 0001
+    localparam [63:0] DEMO_KEY  = 64'hA91B_82C7_71EF_1234;
     localparam [31:0]  DEVICE_MIX = {DEVICE_ID[15:0], DEVICE_ID[31:16]};
+    localparam [63:0] ROUND_SECRET = DEMO_KEY ^ {DEVICE_ID, DEVICE_MIX};
 
     // Rising-edge detection for the four synchronous control inputs.
     // Control pulses must be held high across at least one rising clk edge.
@@ -47,60 +47,44 @@ module tt_um_arminkardovic_montenegro_securekey #(
     wire music_stop_rise  = uio_in[4] & ~music_stop_previous;
 
     // ---------------------------------------------------------------------
-    // Authentication engine: 8 input bytes -> 32 XTEA rounds -> 8 bytes.
-    // The device ID is mixed before and after XTEA so it is part of the
-    // deterministic response function.
+    // Authentication engine: 8 input bytes -> 128 cycles of a compact keyed
+    // nonlinear feedback mixer -> 8 output bytes. This educational transform
+    // is deliberately tiny enough for a 1x1 tile; it is not cryptography.
     // ---------------------------------------------------------------------
     reg [63:0] challenge_register;
     reg [3:0]  challenge_byte_count;
-    reg [31:0] xtea_v0;
-    reg [31:0] xtea_v1;
-    reg [31:0] xtea_sum;
-    reg [5:0]  xtea_round;
-    reg        xtea_second_half;
+    reg [6:0]  auth_round;
     reg [2:0]  response_byte_index;
     reg        response_valid;
     reg        auth_busy;
     reg        auth_ok;
 
-    function [31:0] key_word;
-        input [1:0] index;
-        begin
-            case (index)
-                2'd0: key_word = DEMO_KEY[127:96];
-                2'd1: key_word = DEMO_KEY[95:64];
-                2'd2: key_word = DEMO_KEY[63:32];
-                default: key_word = DEMO_KEY[31:0];
-            endcase
-        end
-    endfunction
-
-    // One shared half-round datapath. The phase bit selects the source word,
-    // destination word, and XTEA key index instead of duplicating the adder
-    // and XOR network for v0 and v1.
-    wire [31:0] xtea_source = xtea_second_half ? xtea_v0 : xtea_v1;
-    wire [31:0] xtea_target = xtea_second_half ? xtea_v1 : xtea_v0;
-    wire [1:0]  xtea_key_index = xtea_second_half ?
-                                  xtea_sum[12:11] : xtea_sum[1:0];
-    wire [31:0] xtea_mix =
-        ((((xtea_source << 4) ^ (xtea_source >> 5)) + xtea_source) ^
-         (xtea_sum + key_word(xtea_key_index)));
-    wire [31:0] xtea_result = xtea_target + xtea_mix;
-    wire [31:0] xtea_sum_next = xtea_sum + XTEA_DELTA;
-    wire [31:0] response_v0 = xtea_v0 ^ DEVICE_ID;
-    wire [31:0] response_v1 = xtea_v1 ^ DEVICE_MIX;
+    // The old state bit 63 participates linearly, so every round remains a
+    // permutation. Nonlinear tap products, a counter-dependent round bit and
+    // the fixed key/device schedule provide diffusion over 128 cycles.
+    wire round_secret_bit = ROUND_SECRET[auth_round[5:0]] ^ auth_round[6];
+    wire mixer_feedback = challenge_register[63] ^
+                          challenge_register[62] ^
+                          challenge_register[60] ^
+                          challenge_register[59] ^
+                          challenge_register[37] ^
+                          (challenge_register[0] & challenge_register[13]) ^
+                          (challenge_register[7] & challenge_register[38]) ^
+                          (challenge_register[26] & challenge_register[45]) ^
+                          auth_round[0] ^ auth_round[3] ^
+                          round_secret_bit;
 
     reg [7:0] selected_response_byte;
     always @(*) begin
         case (response_byte_index)
-            3'd0: selected_response_byte = response_v0[31:24];
-            3'd1: selected_response_byte = response_v0[23:16];
-            3'd2: selected_response_byte = response_v0[15:8];
-            3'd3: selected_response_byte = response_v0[7:0];
-            3'd4: selected_response_byte = response_v1[31:24];
-            3'd5: selected_response_byte = response_v1[23:16];
-            3'd6: selected_response_byte = response_v1[15:8];
-            default: selected_response_byte = response_v1[7:0];
+            3'd0: selected_response_byte = challenge_register[63:56];
+            3'd1: selected_response_byte = challenge_register[55:48];
+            3'd2: selected_response_byte = challenge_register[47:40];
+            3'd3: selected_response_byte = challenge_register[39:32];
+            3'd4: selected_response_byte = challenge_register[31:24];
+            3'd5: selected_response_byte = challenge_register[23:16];
+            3'd6: selected_response_byte = challenge_register[15:8];
+            default: selected_response_byte = challenge_register[7:0];
         endcase
     end
 
@@ -112,11 +96,7 @@ module tt_um_arminkardovic_montenegro_securekey #(
             music_stop_previous  <= 1'b0;
             challenge_register   <= 64'b0;
             challenge_byte_count <= 4'd0;
-            xtea_v0              <= 32'b0;
-            xtea_v1              <= 32'b0;
-            xtea_sum             <= 32'b0;
-            xtea_round           <= 6'd0;
-            xtea_second_half     <= 1'b0;
+            auth_round           <= 7'd0;
             response_byte_index  <= 3'd0;
             response_valid       <= 1'b0;
             auth_busy            <= 1'b0;
@@ -128,25 +108,17 @@ module tt_um_arminkardovic_montenegro_securekey #(
             music_stop_previous  <= uio_in[4];
 
             if (auth_busy) begin
-                // XTEA has two dependent half-rounds. Reusing one 32-bit
-                // datapath over two clocks saves enough area for a 1x2 tile.
-                if (!xtea_second_half) begin
-                    xtea_v0          <= xtea_result;
-                    xtea_sum         <= xtea_sum_next;
-                    xtea_second_half <= 1'b1;
-                end else begin
-                    xtea_v1          <= xtea_result;
-                    xtea_second_half <= 1'b0;
+                challenge_register <= {challenge_register[62:0],
+                                       mixer_feedback};
 
-                    if (xtea_round == 6'd31) begin
-                        response_byte_index  <= 3'd0;
-                        response_valid       <= 1'b1;
-                        challenge_byte_count <= 4'd0;
-                        auth_busy            <= 1'b0;
-                        auth_ok              <= 1'b1;
-                    end else begin
-                        xtea_round <= xtea_round + 1'b1;
-                    end
+                if (auth_round == 7'd127) begin
+                    response_byte_index  <= 3'd0;
+                    response_valid       <= 1'b1;
+                    challenge_byte_count <= 4'd0;
+                    auth_busy            <= 1'b0;
+                    auth_ok              <= 1'b1;
+                end else begin
+                    auth_round <= auth_round + 1'b1;
                 end
             end else if (response_valid && byte_strobe_rise) begin
                 // The same strobe used to load the challenge advances the
@@ -159,11 +131,7 @@ module tt_um_arminkardovic_montenegro_securekey #(
                 end
             end else if (auth_start_rise) begin
                 if (challenge_byte_count == 4'd8) begin
-                    xtea_v0        <= challenge_register[63:32] ^ DEVICE_ID;
-                    xtea_v1        <= challenge_register[31:0] ^ DEVICE_MIX;
-                    xtea_sum       <= 32'b0;
-                    xtea_round     <= 6'd0;
-                    xtea_second_half <= 1'b0;
+                    auth_round     <= 7'd0;
                     response_valid <= 1'b0;
                     auth_busy      <= 1'b1;
                     auth_ok        <= 1'b0;
@@ -183,16 +151,15 @@ module tt_um_arminkardovic_montenegro_securekey #(
     end
 
     // ---------------------------------------------------------------------
-    // Melody engine. The ROM contains a compact monophonic approximation of
-    // the opening section of "Oj, svijetla majska zoro". Audio is a 50% duty
+    // Melody engine. The ROM contains two opening refrain phrases from
+    // "Oj, svijetla majska zoro". Audio is a 50% duty
     // cycle square wave intended for an external piezo driver.
     // ---------------------------------------------------------------------
     localparam [3:0] NOTE_REST = 4'd0;
     localparam [3:0] NOTE_E4   = 4'd1;
     localparam [3:0] NOTE_F4   = 4'd2;
     localparam [3:0] NOTE_G4   = 4'd3;
-    localparam [3:0] NOTE_A4   = 4'd4;
-    localparam [5:0] MELODY_LAST_INDEX = 6'd48;
+    localparam [5:0] MELODY_LAST_INDEX = 6'd39;
 
     function [7:0] melody_word;
         input [5:0] address;
@@ -245,16 +212,6 @@ module tt_um_arminkardovic_montenegro_securekey #(
                 6'd38: melody_word = {NOTE_F4, 4'd6};
                 6'd39: melody_word = {NOTE_F4, 4'd6};
 
-                // Score measures 15-17: "Sinovi smo tvog stijenja"
-                6'd40: melody_word = {NOTE_G4, 4'd3};
-                6'd41: melody_word = {NOTE_G4, 4'd3};
-                6'd42: melody_word = {NOTE_G4, 4'd3};
-                6'd43: melody_word = {NOTE_F4, 4'd3};
-                6'd44: melody_word = {NOTE_A4, 4'd6};
-                6'd45: melody_word = {NOTE_G4, 4'd3};
-                6'd46: melody_word = {NOTE_F4, 4'd3};
-                6'd47: melody_word = {NOTE_F4, 4'd6};
-                6'd48: melody_word = {NOTE_E4, 4'd6};
                 default: melody_word = {NOTE_REST, 4'd1};
             endcase
         end
@@ -270,7 +227,6 @@ module tt_um_arminkardovic_montenegro_securekey #(
                 NOTE_E4:  half_period_for_note = CLOCK_HZ / (2 * 330);
                 NOTE_F4:  half_period_for_note = CLOCK_HZ / (2 * 349);
                 NOTE_G4:  half_period_for_note = CLOCK_HZ / (2 * 392);
-                NOTE_A4:  half_period_for_note = CLOCK_HZ / (2 * 440);
                 default:  half_period_for_note = 15'd0;
             endcase
         end

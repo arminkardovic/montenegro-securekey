@@ -10,28 +10,36 @@ from cocotb.triggers import ClockCycles, RisingEdge, Timer
 
 DEVICE_ID = 0x45490001
 DEVICE_MIX = ((DEVICE_ID & 0xFFFF) << 16) | (DEVICE_ID >> 16)
-DEMO_KEY = (0xA91B82C7, 0x71EF1234, 0x6D6F6E74, 0x656E6567)
-MASK32 = 0xFFFFFFFF
+DEMO_KEY = 0xA91B82C771EF1234
+ROUND_SECRET = DEMO_KEY ^ ((DEVICE_ID << 32) | DEVICE_MIX)
+MASK64 = 0xFFFFFFFFFFFFFFFF
 
 
-def xtea_response(challenge: int) -> int:
+def compact_response(challenge: int) -> int:
     """Independent software model of the documented demo transform."""
-    v0 = ((challenge >> 32) ^ DEVICE_ID) & MASK32
-    v1 = ((challenge & MASK32) ^ DEVICE_MIX) & MASK32
-    total = 0
+    state = challenge
 
-    for _ in range(32):
-        mix0 = ((((v1 << 4) ^ (v1 >> 5)) + v1) & MASK32) ^ (
-            (total + DEMO_KEY[total & 3]) & MASK32
+    for round_index in range(128):
+        bit = lambda index: (state >> index) & 1
+        round_secret_bit = (
+            ((ROUND_SECRET >> (round_index & 63)) & 1) ^ (round_index >> 6)
         )
-        v0 = (v0 + mix0) & MASK32
-        total = (total + 0x9E3779B9) & MASK32
-        mix1 = ((((v0 << 4) ^ (v0 >> 5)) + v0) & MASK32) ^ (
-            (total + DEMO_KEY[(total >> 11) & 3]) & MASK32
+        feedback = (
+            bit(63)
+            ^ bit(62)
+            ^ bit(60)
+            ^ bit(59)
+            ^ bit(37)
+            ^ (bit(0) & bit(13))
+            ^ (bit(7) & bit(38))
+            ^ (bit(26) & bit(45))
+            ^ (round_index & 1)
+            ^ ((round_index >> 3) & 1)
+            ^ round_secret_bit
         )
-        v1 = (v1 + mix1) & MASK32
+        state = ((state << 1) & MASK64) | feedback
 
-    return (((v0 ^ DEVICE_ID) & MASK32) << 32) | ((v1 ^ DEVICE_MIX) & MASK32)
+    return state
 
 
 async def settle():
@@ -70,13 +78,13 @@ async def run_authentication(dut, challenge: int) -> int:
     await pulse_uio(dut, 1)
     assert (int(dut.uio_out.value) >> 7) & 1, "AUTH_BUSY did not assert"
 
-    for _ in range(72):
+    for _ in range(136):
         if (int(dut.uio_out.value) >> 2) & 1:
             break
         await RisingEdge(dut.clk)
         await settle()
     else:
-        raise AssertionError("RESPONSE_VALID did not assert within 64 half-round cycles")
+        raise AssertionError("RESPONSE_VALID did not assert within 128 mixer cycles")
 
     assert not ((int(dut.uio_out.value) >> 7) & 1), "AUTH_BUSY stayed high"
     assert (int(dut.uio_out.value) >> 6) & 1, "AUTH_OK did not assert"
@@ -118,8 +126,8 @@ async def test_securekey(dut):
 
     # Published known-answer test vector.
     challenge = 0x2791A218447310CB
-    expected = 0x9CDECC9AB218FD6A
-    assert xtea_response(challenge) == expected
+    expected = 0x9E169266A982792B
+    assert compact_response(challenge) == expected
     response = await run_authentication(dut, challenge)
     assert response == expected, (
         f"response mismatch: expected {expected:016X}, got {response:016X}"
@@ -129,6 +137,17 @@ async def test_securekey(dut):
     dut.ui_in.value = 0xAA
     await pulse_uio(dut, 0)
     assert not ((int(dut.uio_out.value) >> 6) & 1)
+
+    await reset_dut(dut)
+
+    # A second vector guards against a transform that only matches one input.
+    zero_expected = 0x1A114BAD46E0AEE1
+    assert compact_response(0) == zero_expected
+    zero_response = await run_authentication(dut, 0)
+    assert zero_response == zero_expected, (
+        f"zero response mismatch: expected {zero_expected:016X}, "
+        f"got {zero_response:016X}"
+    )
 
     await reset_dut(dut)
 

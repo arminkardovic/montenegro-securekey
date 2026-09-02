@@ -4,18 +4,18 @@ Montenegro SecureKey contains two independent synchronous engines.
 
 The authentication engine receives a 64-bit challenge as eight bytes on
 `ui_in[7:0]`. Bytes are loaded most-significant first by rising edges on
-`uio[0]`. After exactly eight bytes, a rising edge on `uio[1]` starts a
-32-round XTEA demonstration transform over 64 half-round clocks. A fixed 32-bit
-device ID is mixed into the input and output, and the key is a fixed 128-bit
-constant in the public RTL. `uio[7]` is high during calculation. When finished,
+`uio[0]`. After exactly eight bytes, a rising edge on `uio[1]` starts a compact
+keyed nonlinear feedback transform over 128 clocks. A fixed 32-bit device ID
+and 64-bit key define its round schedule in the public RTL. `uio[7]` is high
+during calculation. When finished,
 `uio[2]` and `uio[6]` go high and the first response byte appears on
 `uo_out[7:0]`. Further rising
 edges on `uio[0]` advance through the remaining seven response bytes; one final
 edge acknowledges byte 7 and clears `uio[2]`.
 
-The melody engine contains a 49-entry note/duration ROM with the soprano line
-from the opening of *Oj, svijetla majska zoro* through *Sinovi smo tvog
-stijenja*. It follows the published F-major, 2/4 score at 80 BPM. A programmable
+The melody engine contains a 40-entry note/duration ROM with two opening
+refrain phrases from *Oj, svijetla majska zoro*. It follows the published
+F-major, 2/4 score at 80 BPM. A programmable
 divider converts the nominal 10 MHz clock into articulated musical square waves
 on `uio[5]`. `uio[3]` starts or restarts playback and `uio[4]` stops and mutes
 it. Authentication and music can run concurrently.
@@ -34,7 +34,7 @@ For the published authentication vector, load the bytes `27 91 A2 18 44 73 10
 CB` in that order. Hold each byte on `ui_in`, pulse `uio[0]` high for one clock,
 then pulse `uio[1]`. `uio[7]` must be high for the calculation. When `uio[2]`
 goes high, read the first response byte and pulse `uio[0]` to advance each
-following byte. The eight bytes must be `9C DE CC 9A B2 18 FD 6A`. Pulse
+following byte. The eight bytes must be `9E 16 92 66 A9 82 79 2B`. Pulse
 `uio[0]` once more after the last byte to clear `uio[2]`.
 
 To test the demo mode, pulse `uio[3]`. Observe a square wave on `uio[5]` with
