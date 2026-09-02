@@ -5,10 +5,11 @@ Montenegro SecureKey contains two independent synchronous engines.
 The authentication engine receives a 64-bit challenge as eight bytes on
 `ui_in[7:0]`. Bytes are loaded most-significant first by rising edges on
 `uio[0]`. After exactly eight bytes, a rising edge on `uio[1]` starts a
-32-round XTEA demonstration transform. A fixed 32-bit device ID is mixed into
-the input and output, and the key is a fixed 128-bit constant in the public
-RTL. `uio[7]` is high during calculation. When finished, `uio[2]` and `uio[6]`
-go high and the first response byte appears on `uo_out[7:0]`. Further rising
+32-round XTEA demonstration transform over 64 half-round clocks. A fixed 32-bit
+device ID is mixed into the input and output, and the key is a fixed 128-bit
+constant in the public RTL. `uio[7]` is high during calculation. When finished,
+`uio[2]` and `uio[6]` go high and the first response byte appears on
+`uo_out[7:0]`. Further rising
 edges on `uio[0]` advance through the remaining seven response bytes; one final
 edge acknowledges byte 7 and clears `uio[2]`.
 

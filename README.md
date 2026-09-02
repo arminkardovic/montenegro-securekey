@@ -12,7 +12,7 @@ independent functions:
    national anthem, *Oj, svijetla majska zoro*.
 
 The project is implemented directly in synthesizable Verilog. It uses a 10 MHz
-clock and is configured for a `2x2` Tiny Tapeout tile.
+clock and is configured for a `1x2` Tiny Tapeout tile.
 
 > **Security warning:** this is an open-source proof of concept, not a secure
 > element. The fixed XTEA key and fixed device ID are visible in the RTL and
@@ -34,7 +34,7 @@ MUSIC_STOP --------->|  note timer + tone divider   |----> AUDIO_OUT
 ```
 
 The authentication and melody state machines can run at the same time. The
-authentication engine takes exactly 32 calculation clocks after a valid start.
+authentication engine takes exactly 64 calculation clocks after a valid start.
 The music engine stores note numbers and durations, not sampled audio.
 
 ## Pinout
@@ -85,6 +85,9 @@ response. It does **not** mean that a host has verified the response.
 
 The 64-bit challenge is whitened with `DEVICE_ID`, encrypted with 32 rounds of
 XTEA using the fixed 128-bit demo key, then whitened again:
+
+The compact engine evaluates one XTEA half-round per clock, so a response is
+ready after 64 processing clocks (about 6.4 microseconds at 10 MHz).
 
 ```text
 DEVICE_ID = 0x45490001

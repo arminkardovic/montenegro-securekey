@@ -70,13 +70,13 @@ async def run_authentication(dut, challenge: int) -> int:
     await pulse_uio(dut, 1)
     assert (int(dut.uio_out.value) >> 7) & 1, "AUTH_BUSY did not assert"
 
-    for _ in range(40):
+    for _ in range(72):
         if (int(dut.uio_out.value) >> 2) & 1:
             break
         await RisingEdge(dut.clk)
         await settle()
     else:
-        raise AssertionError("RESPONSE_VALID did not assert within 32 XTEA rounds")
+        raise AssertionError("RESPONSE_VALID did not assert within 64 half-round cycles")
 
     assert not ((int(dut.uio_out.value) >> 7) & 1), "AUTH_BUSY stayed high"
     assert (int(dut.uio_out.value) >> 6) & 1, "AUTH_OK did not assert"

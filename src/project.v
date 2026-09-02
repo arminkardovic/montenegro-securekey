@@ -57,7 +57,7 @@ module tt_um_arminkardovic_montenegro_securekey #(
     reg [31:0] xtea_v1;
     reg [31:0] xtea_sum;
     reg [5:0]  xtea_round;
-    reg [63:0] response_register;
+    reg        xtea_second_half;
     reg [2:0]  response_byte_index;
     reg        response_valid;
     reg        auth_busy;
@@ -75,27 +75,32 @@ module tt_um_arminkardovic_montenegro_securekey #(
         end
     endfunction
 
-    wire [31:0] xtea_mix0 =
-        ((((xtea_v1 << 4) ^ (xtea_v1 >> 5)) + xtea_v1) ^
-         (xtea_sum + key_word(xtea_sum[1:0])));
-    wire [31:0] xtea_v0_next = xtea_v0 + xtea_mix0;
+    // One shared half-round datapath. The phase bit selects the source word,
+    // destination word, and XTEA key index instead of duplicating the adder
+    // and XOR network for v0 and v1.
+    wire [31:0] xtea_source = xtea_second_half ? xtea_v0 : xtea_v1;
+    wire [31:0] xtea_target = xtea_second_half ? xtea_v1 : xtea_v0;
+    wire [1:0]  xtea_key_index = xtea_second_half ?
+                                  xtea_sum[12:11] : xtea_sum[1:0];
+    wire [31:0] xtea_mix =
+        ((((xtea_source << 4) ^ (xtea_source >> 5)) + xtea_source) ^
+         (xtea_sum + key_word(xtea_key_index)));
+    wire [31:0] xtea_result = xtea_target + xtea_mix;
     wire [31:0] xtea_sum_next = xtea_sum + XTEA_DELTA;
-    wire [31:0] xtea_mix1 =
-        ((((xtea_v0_next << 4) ^ (xtea_v0_next >> 5)) + xtea_v0_next) ^
-         (xtea_sum_next + key_word(xtea_sum_next[12:11])));
-    wire [31:0] xtea_v1_next = xtea_v1 + xtea_mix1;
+    wire [31:0] response_v0 = xtea_v0 ^ DEVICE_ID;
+    wire [31:0] response_v1 = xtea_v1 ^ DEVICE_MIX;
 
     reg [7:0] selected_response_byte;
     always @(*) begin
         case (response_byte_index)
-            3'd0: selected_response_byte = response_register[63:56];
-            3'd1: selected_response_byte = response_register[55:48];
-            3'd2: selected_response_byte = response_register[47:40];
-            3'd3: selected_response_byte = response_register[39:32];
-            3'd4: selected_response_byte = response_register[31:24];
-            3'd5: selected_response_byte = response_register[23:16];
-            3'd6: selected_response_byte = response_register[15:8];
-            default: selected_response_byte = response_register[7:0];
+            3'd0: selected_response_byte = response_v0[31:24];
+            3'd1: selected_response_byte = response_v0[23:16];
+            3'd2: selected_response_byte = response_v0[15:8];
+            3'd3: selected_response_byte = response_v0[7:0];
+            3'd4: selected_response_byte = response_v1[31:24];
+            3'd5: selected_response_byte = response_v1[23:16];
+            3'd6: selected_response_byte = response_v1[15:8];
+            default: selected_response_byte = response_v1[7:0];
         endcase
     end
 
@@ -111,7 +116,7 @@ module tt_um_arminkardovic_montenegro_securekey #(
             xtea_v1              <= 32'b0;
             xtea_sum             <= 32'b0;
             xtea_round           <= 6'd0;
-            response_register    <= 64'b0;
+            xtea_second_half     <= 1'b0;
             response_byte_index  <= 3'd0;
             response_valid       <= 1'b0;
             auth_busy            <= 1'b0;
@@ -123,22 +128,25 @@ module tt_um_arminkardovic_montenegro_securekey #(
             music_stop_previous  <= uio_in[4];
 
             if (auth_busy) begin
-                xtea_v0  <= xtea_v0_next;
-                xtea_v1  <= xtea_v1_next;
-                xtea_sum <= xtea_sum_next;
-
-                if (xtea_round == 6'd31) begin
-                    response_register <= {
-                        xtea_v0_next ^ DEVICE_ID,
-                        xtea_v1_next ^ DEVICE_MIX
-                    };
-                    response_byte_index  <= 3'd0;
-                    response_valid       <= 1'b1;
-                    challenge_byte_count <= 4'd0;
-                    auth_busy            <= 1'b0;
-                    auth_ok              <= 1'b1;
+                // XTEA has two dependent half-rounds. Reusing one 32-bit
+                // datapath over two clocks saves enough area for a 1x2 tile.
+                if (!xtea_second_half) begin
+                    xtea_v0          <= xtea_result;
+                    xtea_sum         <= xtea_sum_next;
+                    xtea_second_half <= 1'b1;
                 end else begin
-                    xtea_round <= xtea_round + 1'b1;
+                    xtea_v1          <= xtea_result;
+                    xtea_second_half <= 1'b0;
+
+                    if (xtea_round == 6'd31) begin
+                        response_byte_index  <= 3'd0;
+                        response_valid       <= 1'b1;
+                        challenge_byte_count <= 4'd0;
+                        auth_busy            <= 1'b0;
+                        auth_ok              <= 1'b1;
+                    end else begin
+                        xtea_round <= xtea_round + 1'b1;
+                    end
                 end
             end else if (response_valid && byte_strobe_rise) begin
                 // The same strobe used to load the challenge advances the
@@ -155,6 +163,7 @@ module tt_um_arminkardovic_montenegro_securekey #(
                     xtea_v1        <= challenge_register[31:0] ^ DEVICE_MIX;
                     xtea_sum       <= 32'b0;
                     xtea_round     <= 6'd0;
+                    xtea_second_half <= 1'b0;
                     response_valid <= 1'b0;
                     auth_busy      <= 1'b1;
                     auth_ok        <= 1'b0;
@@ -251,7 +260,10 @@ module tt_um_arminkardovic_montenegro_securekey #(
         end
     endfunction
 
-    function [31:0] half_period_for_note;
+    // At the nominal 10 MHz clock the lowest note needs 17,006 cycles, so
+    // 15 bits are sufficient. NOTE_UNIT_CYCLES is 1,250,000 (21 bits).
+    /* verilator lint_off WIDTHTRUNC */
+    function [14:0] half_period_for_note;
         input [3:0] note_code;
         begin
             case (note_code)
@@ -267,14 +279,15 @@ module tt_um_arminkardovic_montenegro_securekey #(
                 NOTE_F5:  half_period_for_note = CLOCK_HZ / (2 * 698);
                 NOTE_G5:  half_period_for_note = CLOCK_HZ / (2 * 784);
                 NOTE_A5:  half_period_for_note = CLOCK_HZ / (2 * 880);
-                default:  half_period_for_note = 32'd0;
+                default:  half_period_for_note = 15'd0;
             endcase
         end
     endfunction
+    /* verilator lint_on WIDTHTRUNC */
 
     reg [5:0]  melody_index;
-    reg [31:0] tone_counter;
-    reg [31:0] note_unit_counter;
+    reg [14:0] tone_counter;
+    reg [20:0] note_unit_counter;
     reg [3:0]  note_units_elapsed;
     reg        music_playing;
     reg        audio_out;
@@ -282,46 +295,49 @@ module tt_um_arminkardovic_montenegro_securekey #(
     wire [7:0]  current_melody_word = melody_word(melody_index);
     wire [3:0]  current_note = current_melody_word[7:4];
     wire [3:0]  current_duration_units = current_melody_word[3:0];
-    wire [31:0] current_half_period = half_period_for_note(current_note);
+    wire [14:0] current_half_period = half_period_for_note(current_note);
 
     always @(posedge clk) begin
         if (!rst_n) begin
             melody_index       <= 6'd0;
-            tone_counter       <= 32'd0;
-            note_unit_counter  <= 32'd0;
+            tone_counter       <= 15'd0;
+            note_unit_counter  <= 21'd0;
             note_units_elapsed <= 4'd0;
             music_playing      <= 1'b0;
             audio_out          <= 1'b0;
         end else if (music_stop_rise) begin
             melody_index       <= 6'd0;
-            tone_counter       <= 32'd0;
-            note_unit_counter  <= 32'd0;
+            tone_counter       <= 15'd0;
+            note_unit_counter  <= 21'd0;
             note_units_elapsed <= 4'd0;
             music_playing      <= 1'b0;
             audio_out          <= 1'b0;
         end else if (music_start_rise) begin
             melody_index       <= 6'd0;
-            tone_counter       <= 32'd0;
-            note_unit_counter  <= 32'd0;
+            tone_counter       <= 15'd0;
+            note_unit_counter  <= 21'd0;
             note_units_elapsed <= 4'd0;
             music_playing      <= 1'b1;
             audio_out          <= 1'b0;
         end else if (music_playing) begin
-            if (current_note == NOTE_REST || current_half_period == 32'd0) begin
-                tone_counter <= 32'd0;
+            if (current_note == NOTE_REST || current_half_period == 15'd0) begin
+                tone_counter <= 15'd0;
                 audio_out    <= 1'b0;
             end else if (tone_counter >= current_half_period - 1'b1) begin
-                tone_counter <= 32'd0;
+                tone_counter <= 15'd0;
                 audio_out    <= ~audio_out;
             end else begin
                 tone_counter <= tone_counter + 1'b1;
             end
 
+            // NOTE_UNIT_CYCLES is intentionally limited to the 21-bit counter.
+            /* verilator lint_off WIDTHEXPAND */
             if (note_unit_counter >= NOTE_UNIT_CYCLES - 1) begin
-                note_unit_counter <= 32'd0;
+            /* verilator lint_on WIDTHEXPAND */
+                note_unit_counter <= 21'd0;
                 if (note_units_elapsed + 1'b1 >= current_duration_units) begin
                     note_units_elapsed <= 4'd0;
-                    tone_counter       <= 32'd0;
+                    tone_counter       <= 15'd0;
                     audio_out          <= 1'b0;
                     if (melody_index == MELODY_LAST_INDEX) begin
                         melody_index  <= 6'd0;
